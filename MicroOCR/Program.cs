@@ -20,7 +20,7 @@ namespace MicroOCR
             cfg.Add(CfgNode.TrainLabel, "D:/dataset/gen6/train.txt");
             cfg.Add(CfgNode.TestLabel, "D:/dataset/gen6/test.txt");
             cfg.Add(CfgNode.VocabularyPath, "G:/microOCR/MicroOCR/english.txt");
-            cfg.Add(CfgNode.ModelPath, "G:\\microOCR\\MicroOCR\\bin\\x64\\Debug\\net6.0\\save_model\\MicroOcr_nh128_depth2_epoch3_wordAcc0.0060_charAcc0.6845.pth");
+            //cfg.Add(CfgNode.ModelPath, "G:\\microOCR\\MicroOCR\\bin\\x64\\Debug\\net6.0\\save_model\\MicroOcr_nh128_depth2_epoch3_wordAcc0.0060_charAcc0.6845.pth");
             cfg.Add(CfgNode.ModelType, "MicroOcr");
             cfg.Add(CfgNode.Nh, 128);
             cfg.Add(CfgNode.Depth, 2);
