@@ -1,62 +1,36 @@
-﻿using OpenCvSharp;
-using System.Runtime.InteropServices;
-using TorchSharp;
+﻿using TorchSharp;
 
 namespace MicroOCR
 {
     public static class CollateFn
     {
-        private static Mat ResizeWithSpecificHeight(int inputHeight, Mat img)
-        {
-            double resizeRatio = (double)inputHeight / img.Size().Height;
-            Mat outImg = new Mat();
-            Cv2.Resize(img, outImg, new OpenCvSharp.Size(0, 0), resizeRatio, resizeRatio, InterpolationFlags.Linear);
-            return outImg;
-        }
-
-        private static byte[] PadImageWidth(Mat img, int targetWidth, int padValue = 0)
-        {
-            byte[] retData = new byte[0];
-            var size = img.Size();
-            if (targetWidth > size.Width)
-            {
-                Mat returnImg = new Mat();
-                Cv2.CopyMakeBorder(img, returnImg, 0, 0, 0, targetWidth - size.Width, BorderTypes.Constant, padValue);
-                var bytes = new byte[returnImg.Total() * 3];
-                Marshal.Copy(returnImg.Data, bytes, 0, bytes.Length);       
-                retData = bytes;
-            }
-            else
-            {
-                var bytes = new byte[img.Total() * 3];
-                Marshal.Copy(img.Data, bytes, 0, bytes.Length);
-                retData = bytes;
-            }
-            return retData;
-        }
-
         public static BatchItem Collate(IEnumerable<TextLineDataSetItem> items, torch.Device device)
         {
-            List<Mat> allSameHeightImage = new List<Mat>();
             var itemList = items.ToList<TextLineDataSetItem>();
             var transform = torchvision.transforms.ConvertImageDType(torch.ScalarType.Float32);
+            List<int> allImageWidth = new List<int>();
             foreach (var item in items)
             {
-                allSameHeightImage.Add(ResizeWithSpecificHeight(32, item.image));
+                allImageWidth.Add((int)((double)32 / item.image.shape[1] * item.image.shape[2]));
             }
-            var maxImgWidth = allSameHeightImage.Max(mat => mat.Size().Width);
+            var maxImgWidth = allImageWidth.Max();
             maxImgWidth = (int)Math.Ceiling((double)maxImgWidth / 8) * 8;
+
             List<torch.Tensor> resizeImgTensor = new List<torch.Tensor>();
             List<string> labels = new List<string>();
             for (int i = 0; i < items.Count(); i++)
             {
                 labels.Add(itemList[i].label);
-                var img = PadImageWidth(allSameHeightImage[i], maxImgWidth);
-                var imgTensor = transform.forward(img).reshape(3, 32, maxImgWidth);
-                //var imgTensor = torch.tensor(img, torch.uint8).div(255).reshape(3, 32, maxImgWidth).to(torch.float32);
+                int newWidth = (int)((double)32 / itemList[i].image.shape[1] * itemList[i].image.shape[2]);
+                var resizeOperator = torchvision.transforms.Resize(32, newWidth);
+                long[] padding = { 0, (long)maxImgWidth - newWidth, 0, 0 };
+                var padOperator = torchvision.transforms.Pad(padding);
+                var img = itemList[i].image;
+                var imgTensor = padOperator.forward(resizeOperator.forward(transform.forward(img)));
                 resizeImgTensor.Add(imgTensor);
             }
             var images = torch.stack(resizeImgTensor).to(device);
+            //Console.WriteLine(images.ToString(TorchSharp.TensorStringStyle.Julia));
             return new BatchItem
             {
                 labels = labels,

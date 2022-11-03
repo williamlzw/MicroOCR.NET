@@ -26,10 +26,6 @@ namespace MicroOCR
             var array = Enumerable.Repeat(value, (int)batchSize).ToArray();
             var predsLength = torch.from_array(array);
             predsLength = predsLength.to(_device);
-            //pred = pred.to("cpu");
-            //label = label.to("cpu");
-            //predsLength = predsLength.to("cpu");
-            //labelLength = labelLength.to("cpu");
             return _lossFunc.forward(pred, label, predsLength, labelLength);
         }
     }
