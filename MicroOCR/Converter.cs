@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using TorchSharp;
+using static TorchSharp.torch;
 
 namespace MicroOCR
 {
@@ -56,41 +57,41 @@ namespace MicroOCR
         {
             preds = torch.nn.functional.softmax(preds, 2);
             var ret = preds.max(2);
-            var preds_idx = ret.indexes.detach().cpu().tolist() as System.Collections.IList;
-            var preds_score = ret.values.detach().cpu().tolist() as System.Collections.IList;
+            var preds_idx = ret.indexes.detach().to(CPU);
+            var preds_score = ret.values.detach().to(CPU);
             List<Tuple<string, List<float>>> retList = new List<Tuple<string, List<float>>>();
-            for (int i = 0; i < preds_idx.Count; i++)
+            for (int i = 0; i < preds_idx.shape[0]; i++)
             {
-                var word = preds_idx[i] as System.Collections.ArrayList;
+                var word = preds_idx[i].to_type(ScalarType.Int32).data<int>().ToArray();
                 if (raw)
                 {
-                    var scoreList = preds_score[i] as System.Collections.ArrayList;
-                    TorchSharp.Scalar score = (TorchSharp.Scalar)scoreList[0];
+                    var scoreList = preds_score[i].data<float>().ToArray();
+                    var score = scoreList[0];
                     string retStr = "";
                     List<float> retScoreList = new List<float>();
-                    for (int j = 0; j < word.Count; j++)
+                    for (int j = 0; j < word.Length; j++)
                     {
-                        TorchSharp.Scalar charIdx = (TorchSharp.Scalar)word[j];
-                        retStr = retStr + _idx2char[charIdx.ToInt32()];
+                        var charIdx = word[j];
+                        retStr = retStr + _idx2char[charIdx];
                     }
-                    retScoreList.Add(score.ToSingle());
+                    retScoreList.Add(score);
                     var tuple = new Tuple<string, List<float>>(retStr, retScoreList);
                     retList.Add(tuple);
                 }
                 else
                 {
-                    var scoreList = preds_score[i] as System.Collections.ArrayList;
+                    var scoreList = preds_score[i].data<float>().ToArray();
                     string retStr = "";
                     List<float> retScoreList = new List<float>();
-                    for (int j = 0; j < word.Count; j++)
+                    for (int j = 0; j < word.Length; j++)
                     {
-                        TorchSharp.Scalar charIdx = (TorchSharp.Scalar)word[j];
-                        if (charIdx.ToInt32() != 0 && !(j > 0 && ((TorchSharp.Scalar)word[j - 1]).ToInt64() == charIdx.ToInt64()))
+                        var charIdx = word[j];
+                        if (charIdx != 0 && !(j > 0 && (word[j - 1]) == charIdx))
                         {
-                            retStr = retStr + _idx2char[charIdx.ToInt32()];
-                            TorchSharp.Scalar score = (TorchSharp.Scalar)scoreList[j];
-                            retScoreList.Add(score.ToSingle());
-                            
+                            var bb = charIdx;
+                            retStr = retStr + _idx2char[bb];
+                            var score = scoreList[j];
+                            retScoreList.Add(score);
                         }
                     }
                     var tuple = new Tuple<string, List<float>>(retStr, retScoreList);

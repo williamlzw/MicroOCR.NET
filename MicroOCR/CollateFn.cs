@@ -30,7 +30,6 @@ namespace MicroOCR
                 resizeImgTensor.Add(imgTensor);
             }
             var images = torch.stack(resizeImgTensor).to(device);
-            //Console.WriteLine(images.ToString(TorchSharp.TensorStringStyle.Julia));
             return new BatchItem
             {
                 labels = labels,

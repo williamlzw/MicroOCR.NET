@@ -10,27 +10,27 @@ namespace MicroOCR
             TrainModel(cfg);
         }
 
-        public static Dictionary<CfgNode, object> BuildCfg()
+        public static TrainConfig BuildCfg()
         {
-            Dictionary<CfgNode, object> cfg = new Dictionary<CfgNode, object>();
-            cfg.Add(CfgNode.TrainRoot, "D:/dataset/");
-            cfg.Add(CfgNode.TestRoot, "D:/dataset/");
-            cfg.Add(CfgNode.TrainLabel, "D:/dataset/train.txt");
-            cfg.Add(CfgNode.TestLabel, "D:/dataset/test.txt");
-            cfg.Add(CfgNode.VocabularyPath, "D:\\microocr.net\\MicroOCR\\english.txt");
-            //cfg.Add(CfgNode.ModelPath, "G:\\microOCR\\MicroOCR\\bin\\x64\\Debug\\net6.0\\save_model\\MicroOcr_nh128_depth2_epoch3_wordAcc0.0060_charAcc0.6845.pth");
-            cfg.Add(CfgNode.ModelType, "MicroOcr");
-            cfg.Add(CfgNode.Nh, 64);
-            cfg.Add(CfgNode.Depth, 2);
-            cfg.Add(CfgNode.InChannels, 3);
-            cfg.Add(CfgNode.Lr, 0.001);
-            cfg.Add(CfgNode.BatchSize, 32);
-            cfg.Add(CfgNode.Epochs, 20);
-            cfg.Add(CfgNode.DisplayStepInterval, 50);
-            cfg.Add(CfgNode.EvalStepInterval, 250);
-            cfg.Add(CfgNode.SaveEpochInterval, 1);
-            cfg.Add(CfgNode.ShowStrSize, 10);
-            cfg.Add(CfgNode.GpuIndex, 0);
+            TrainConfig cfg = new TrainConfig();
+            cfg.TrainRoot = "D:/dataset/gen/train/";
+            cfg.TestRoot = "D:/dataset/gen/test/";
+            cfg.TrainLabel = "D:/dataset/gen/train.txt";
+            cfg.TestLabel = "D:/dataset/gen/test.txt";
+            cfg.VocabularyPath = "D:\\MicroOcr\\MicroOCR\\english.txt";
+            //cfg.ModelPath = "D:\\MicroOcr\\MicroOCR\\bin\\Debug\\net6.0\\save_model\\MicroOcr_nh64_depth2_epoch3_wordAcc0.6575.pth";
+            cfg.ModelType = "MicroOcr";
+            cfg.Nh = 64;
+            cfg.Depth = 2;
+            cfg.InChannels = 3;
+            cfg.Lr = 0.001;
+            cfg.BatchSize = 32;
+            cfg.Epochs = 20;
+            cfg.DisplayStepInterval = 50;
+            cfg.EvalStepInterval = 250;
+            cfg.SaveEpochInterval = 1;
+            cfg.ShowStrSize = 10;
+            cfg.GpuIndex = 0;
             return cfg;
         }
     }

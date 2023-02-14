@@ -11,41 +11,41 @@ namespace MicroOCR
 {
     public static class TrainTool
     {
-        public static void TrainModel(Dictionary<CfgNode, object> cfg)
+        public static void TrainModel(TrainConfig cfg)
         {
             string description = "cpu";
             if (torch.cuda.is_available())
             {
-                description = $"cuda:{cfg[CfgNode.GpuIndex].ToString()}";
+                description = $"cuda:{cfg.GpuIndex}";
             }
 
             var device = torch.device(description);
-            var lines = File.ReadAllLines(cfg[CfgNode.VocabularyPath].ToString());
+            var lines = File.ReadAllLines(cfg.VocabularyPath);
             string character = "";
             foreach (var line in lines)
             {
                 character += line.TrimEnd();
             }
-            var trainLoader = BuildDataloader(cfg[CfgNode.TrainRoot].ToString(), cfg[CfgNode.TrainLabel].ToString(), (int)cfg[CfgNode.BatchSize], true, device);
-            var testLoader = BuildDataloader(cfg[CfgNode.TestRoot].ToString(), cfg[CfgNode.TestLabel].ToString(), (int)cfg[CfgNode.BatchSize], false, device);
+            var trainLoader = BuildDataloader(cfg.TrainRoot, cfg.TrainLabel, cfg.BatchSize, true, device);
+            var testLoader = BuildDataloader(cfg.TestRoot, cfg.TestLabel, cfg.BatchSize, false, device);
             var converter = BuildConverter(character);
             var lossFun = BuildLoss(device);
             var average = BuildAverageMeter();
             var metric = BuildMetric(converter);
-            var model = BuildModel((int)cfg[CfgNode.InChannels], (int)cfg[CfgNode.Nh], (int)cfg[CfgNode.Depth], converter._numOfClass);
-            if (cfg.ContainsKey(CfgNode.ModelPath))
+            var model = BuildModel(cfg.InChannels, cfg.Nh, cfg.Depth, converter._numOfClass);
+            if (cfg.ModelPath != null && cfg.ModelPath != "")
             {
-                LoadModel(cfg[CfgNode.ModelPath].ToString(), model);
+                LoadModel(cfg.ModelPath, model);
             }
             model = model.to(device);
-            var optimizer = BuildOptimizer(model, (double)cfg[CfgNode.Lr]);
+            var optimizer = BuildOptimizer(model, cfg.Lr);
             var scheduler = BuildScheduler(optimizer);
 
             float lastWordAcc = 0;
             float bestWordAcc = 0;
             var writer = torch.utils.tensorboard.SummaryWriter();
 
-            foreach (var epoch in Enumerable.Range(0, (int)cfg[CfgNode.Epochs]))
+            foreach (var epoch in Enumerable.Range(0, cfg.Epochs))
             {
                 model.train();
                 int charCorrects = 0, wordCorrects = 0, allWord = 1, allChar = 1;
@@ -65,7 +65,7 @@ namespace MicroOCR
                     optimizer.step();
                     average.Update(loss.ToSingle());
                     var costTime = (Environment.TickCount - since) / 1000;
-                    if ((batchIdx + 1) % (int)cfg[CfgNode.DisplayStepInterval] == 0 || (batchIdx + 1) == trainLoader.Count)
+                    if ((batchIdx + 1) % cfg.DisplayStepInterval == 0 || (batchIdx + 1) == trainLoader.Count)
                     {
                         var showDict = metric.Call(pred, batchItem.labels);
                         charCorrects += (int)showDict[ShowNode.CharCorrect];
@@ -74,12 +74,12 @@ namespace MicroOCR
                         allChar += (int)sum.ToInt64();
                         allWord += (int)images.size(0);
                         lastWordAcc = (float)wordCorrects / allWord;
-                        string logStr = $"Train:[epoch {epoch + 1}/{cfg[CfgNode.Epochs]}][step {batchIdx + 1}/{trainLoader.Count} ({(float)100 * (batchIdx + 1) / trainLoader.Count:F0}%] lr:{optimizer.ParamGroups.First().LearningRate:F5} Loss:{average._avg:F4} Word Acc:{(float)wordCorrects / allWord:F4} Char Acc:{(float)charCorrects / allChar:F4} Cost time:{costTime}s Estimated time:{costTime * trainLoader.Count / (batchIdx + 1) - costTime}s";
+                        string logStr = $"Train:[epoch {epoch + 1}/{cfg.Epochs}][step {batchIdx + 1}/{trainLoader.Count} ({(float)100 * (batchIdx + 1) / trainLoader.Count:F0}%] lr:{optimizer.ParamGroups.First().LearningRate:F5} Loss:{average._avg:F4} Word Acc:{(float)wordCorrects / allWord:F4} Char Acc:{(float)charCorrects / allChar:F4} Cost time:{costTime}s Estimated time:{costTime * trainLoader.Count / (batchIdx + 1) - costTime}s";
                         Console.WriteLine(logStr);
                     }
-                    if ((batchIdx + 1) % (int)cfg[CfgNode.EvalStepInterval] == 0)
+                    if ((batchIdx + 1) % cfg.EvalStepInterval == 0)
                     {
-                        var (wordAcc, charAcc, _) = TestModel(model, device, testLoader, converter, metric, lossFun, (int)cfg[CfgNode.ShowStrSize]);
+                        var (wordAcc, charAcc, _) = TestModel(model, device, testLoader, converter, metric, lossFun, cfg.ShowStrSize);
                         if (wordAcc > bestWordAcc)
                         {
                             bestWordAcc = wordAcc;
@@ -87,12 +87,11 @@ namespace MicroOCR
                         }
                     }
                     batchIdx += 1;
-
                     batchItem.images.Dispose();
                 }
-                if ((epoch + 1) % (int)cfg[CfgNode.SaveEpochInterval] == 0)
+                if ((epoch + 1) % cfg.SaveEpochInterval == 0)
                 {
-                    var (wordAcc, charAcc, valLoss) = TestModel(model, device, testLoader, converter, metric, lossFun, (int)cfg[CfgNode.ShowStrSize]);
+                    var (wordAcc, charAcc, valLoss) = TestModel(model, device, testLoader, converter, metric, lossFun, cfg.ShowStrSize);
 
                     writer.add_scalar("Validation Word Acc", wordAcc, epoch + 1);
                     writer.add_scalar("Validation Loss", valLoss, epoch + 1);
@@ -103,7 +102,7 @@ namespace MicroOCR
                         bestWordAcc = wordAcc;
                         epochStr = "best";
                     }
-                    SaveModel(model, cfg[CfgNode.ModelType].ToString(), epochStr, (int)cfg[CfgNode.Nh], (int)cfg[CfgNode.Depth], wordAcc, charAcc);
+                    SaveModel(model, cfg.ModelType, epochStr, cfg.Nh, cfg.Depth, wordAcc, charAcc);
                 }
                 average.Reset();
                 scheduler.step(lastWordAcc, epoch);
@@ -226,30 +225,29 @@ namespace MicroOCR
         public static Module<Tensor, Tensor> BuildModel(int inChannels, int nh, int depth, int nclass)
         {
             var net = new MicroMLPNet(inChannels, nh, depth, nclass, 32);
-            //var net = new CRNN(inChannels, nh, nclass);
             return net;
         }
 
-        public enum CfgNode
+        public class TrainConfig
         {
-            TrainRoot,
-            TestRoot,
-            TrainLabel,
-            TestLabel,
-            VocabularyPath,
-            ModelPath,
-            ModelType,
-            InChannels,
-            Lr,
-            BatchSize,
-            Epochs,
-            DisplayStepInterval,
-            EvalStepInterval,
-            SaveEpochInterval,
-            ShowStrSize,
-            GpuIndex,
-            Nh,
-            Depth
+            public string TrainRoot;
+            public string TestRoot;
+            public string TrainLabel;
+            public string TestLabel;
+            public string VocabularyPath;
+            public string ModelPath;
+            public string ModelType;
+            public int InChannels;
+            public double Lr;
+            public int BatchSize;
+            public int Epochs;
+            public int DisplayStepInterval;
+            public int EvalStepInterval;
+            public int SaveEpochInterval;
+            public int ShowStrSize;
+            public int GpuIndex;
+            public int Nh;
+            public int Depth;
         }
     }
 }
