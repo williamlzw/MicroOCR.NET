@@ -28,9 +28,10 @@ namespace MicroOCR
 
         public override Tensor forward(Tensor input)
         {
+            using var _ = NewDisposeScope();
             var x = conv1.forward(input);
             x = x + conv2.forward(x);
-            return x;
+            return x.MoveToOuterDisposeScope();
         }
     }
 
@@ -74,6 +75,7 @@ namespace MicroOCR
 
         public override Tensor forward(Tensor input)
         {
+            using var _ = NewDisposeScope();
             var x = input.permute(0, 3, 2, 1);
             x = layerNorm1.forward(x);
             x = x + mlp1.forward(x);
@@ -84,21 +86,14 @@ namespace MicroOCR
             x = layerNorm3.forward(x);
             x = x + mlp2.forward(x);
             x = x.permute(0, 3, 2, 1);
-            return x;
+            return x.MoveToOuterDisposeScope();
         }
     }
 
     public class MLPStage : Sequential
     {
-        private readonly Sequential mlpBlocks = Sequential();
-
         public MLPStage(int depth, long inputDim, long hiddenDim) : base(Enumerable.Range(0, depth).Select(_ => new MLPBlock(inputDim, hiddenDim)).ToArray())
         {
-        }
-
-        public override Tensor forward(Tensor input)
-        {
-            return mlpBlocks.forward(input);
         }
     }
 
