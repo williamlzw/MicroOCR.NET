@@ -1,8 +1,6 @@
 ﻿using static TorchSharp.torch.nn;
 using static TorchSharp.torch;
 using TorchSharp;
-using static TorchSharp.torch.utils;
-using static TorchSharp.torch.optim.lr_scheduler;
 using static MicroOCR.CollateFn;
 using static TorchSharp.torch.optim.lr_scheduler.impl;
 using TorchSharp.Modules;
@@ -109,7 +107,7 @@ namespace MicroOCR
             }
         }
 
-        public static (float, float, float) TestModel(Module<Tensor, Tensor> model, torch.Device device, data.DataLoader<TextLineDataSetItem, BatchItem> testLoader, ConverterInterface converter, MetricInterface metric, LossInterface lossFun, int showStrSize)
+        public static (float, float, float) TestModel(Module<Tensor, Tensor> model, torch.Device device, DataLoader<TextLineDataSetItem, BatchItem> testLoader, ConverterInterface converter, MetricInterface metric, LossInterface lossFun, int showStrSize)
         {
             model.eval();
             var lss = 0.0f;
@@ -189,10 +187,11 @@ namespace MicroOCR
             return new TextLineDataset(dataDir, labelFile);
         }
 
-        public static torch.utils.data.DataLoader<TextLineDataSetItem, BatchItem> BuildDataloader(string dataDir, string labelFile, int batchSize, bool doShuffle, torch.Device device)
+        public static DataLoader<TextLineDataSetItem, BatchItem> BuildDataloader(string dataDir, string labelFile, int batchSize, bool doShuffle, torch.Device device)
         {
             var dataset = BuildDataset(dataDir, labelFile);
-            var dataloader = new torch.utils.data.DataLoader<TextLineDataSetItem, BatchItem>(dataset, batchSize, Collate, doShuffle, device);
+            var dataloader = new DataLoader<TextLineDataSetItem, BatchItem>(dataset, batchSize, Collate, doShuffle, device);
+            
             return dataloader;
         }
 
@@ -226,6 +225,43 @@ namespace MicroOCR
         {
             var net = new MicroMLPNet(inChannels, nh, depth, nclass, 32);
             return net;
+        }
+
+        public static void Infer(TrainConfig cfg)
+        {
+            string description = "cpu";
+            if (torch.cuda.is_available())
+            {
+                description = $"cuda:{cfg.GpuIndex}";
+            }
+
+            var device = torch.device(description);
+            var lines = File.ReadAllLines(cfg.VocabularyPath);
+            string character = "";
+            foreach (var line in lines)
+            {
+                character += line.TrimEnd();
+            }
+            var converter = new CTCLabelConverter(character);
+            var model = new MicroMLPNet(cfg.InChannels, cfg.Nh, cfg.Depth, converter._numOfClass, 32);
+            if (cfg.ModelPath != null && cfg.ModelPath != "")
+            {
+                model.load(cfg.ModelPath);
+            }
+           
+            model = model.to(device);
+            model.eval();
+            torchvision.io.DefaultImager = new torchvision.io.SkiaImager();
+            var image = torchvision.io.read_image("E:\\dataset\\ocr10\\train\\0.jpg");
+            var transformOperator = torchvision.transforms.ConvertImageDtype(ScalarType.Float32);
+            var resizeOperator = torchvision.transforms.Resize(32, 140);
+            image = transformOperator.call(image);
+            image = resizeOperator.call(image).unsqueeze(0);
+            image = image.to(device);
+            var pred = model.call(image);
+            var predList = converter.Decode(pred);
+            var (predStr, predScore) = predList[0];
+            Console.WriteLine(predStr);
         }
 
         public class TrainConfig

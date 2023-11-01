@@ -1,4 +1,5 @@
-﻿using static MicroOCR.TrainTool;
+﻿using TorchSharp;
+using static MicroOCR.TrainTool;
 
 namespace MicroOCR
 {
@@ -8,22 +9,23 @@ namespace MicroOCR
         {  
             var cfg = BuildCfg();
             TrainModel(cfg);
+            Infer(cfg);
         }
 
         public static TrainConfig BuildCfg()
         {
             TrainConfig cfg = new TrainConfig();
-            cfg.TrainRoot = "D:/dataset/gen/train/";
-            cfg.TestRoot = "D:/dataset/gen/test/";
-            cfg.TrainLabel = "D:/dataset/gen/train.txt";
-            cfg.TestLabel = "D:/dataset/gen/test.txt";
+            cfg.TrainRoot = "e:/dataset/ocr10/";
+            cfg.TestRoot = "e:/dataset/ocr10/";
+            cfg.TrainLabel = "e:/dataset/ocr10/train.txt";
+            cfg.TestLabel = "e:/dataset/ocr10/test.txt";
             cfg.VocabularyPath = "D:\\MicroOcr\\MicroOCR\\english.txt";
-            //cfg.ModelPath = "D:\\MicroOcr\\MicroOCR\\bin\\Debug\\net6.0\\save_model\\MicroOcr_nh64_depth2_epoch3_wordAcc0.6575.pth";
+            cfg.ModelPath = "D:\\MicroOcr\\MicroOCR\\bin\\x64\\Debug\\net6.0\\save_model\\MicroOcr_nh64_depth2_epoch19_wordAcc0.5833_charAcc0.8118.pth";
             cfg.ModelType = "MicroOcr";
             cfg.Nh = 64;
             cfg.Depth = 2;
             cfg.InChannels = 3;
-            cfg.Lr = 0.001;
+            cfg.Lr = 0.0001;
             cfg.BatchSize = 32;
             cfg.Epochs = 20;
             cfg.DisplayStepInterval = 50;

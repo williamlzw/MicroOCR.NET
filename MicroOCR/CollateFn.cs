@@ -7,7 +7,7 @@ namespace MicroOCR
         public static BatchItem Collate(IEnumerable<TextLineDataSetItem> items, torch.Device device)
         {
             var itemList = items.ToList<TextLineDataSetItem>();
-            var transform = torchvision.transforms.ConvertImageDType(torch.ScalarType.Float32);
+            var transform = torchvision.transforms.ConvertImageDtype(torch.ScalarType.Float32);
             List<int> allImageWidth = new List<int>();
             foreach (var item in items)
             {
@@ -26,7 +26,7 @@ namespace MicroOCR
                 long[] padding = { 0, (long)maxImgWidth - newWidth, 0, 0 };
                 var padOperator = torchvision.transforms.Pad(padding);
                 var img = itemList[i].image;
-                var imgTensor = padOperator.forward(resizeOperator.forward(transform.forward(img)));
+                var imgTensor = padOperator.call(resizeOperator.call(transform.call(img)));
                 resizeImgTensor.Add(imgTensor);
             }
             var images = torch.stack(resizeImgTensor).to(device);
