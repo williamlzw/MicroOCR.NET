@@ -252,9 +252,9 @@ namespace MicroOCR
             model = model.to(device);
             model.eval();
             torchvision.io.DefaultImager = new torchvision.io.SkiaImager();
-            var image = torchvision.io.read_image("E:\\dataset\\ocr10\\train\\0.jpg");
+            var image = torchvision.io.read_image("E:\\dataset\\ocr10\\test\\0.jpg");
             var transformOperator = torchvision.transforms.ConvertImageDtype(ScalarType.Float32);
-            var resizeOperator = torchvision.transforms.Resize(32, 140);
+            var resizeOperator = torchvision.transforms.Resize(32, 400);
             image = transformOperator.call(image);
             image = resizeOperator.call(image).unsqueeze(0);
             image = image.to(device);
